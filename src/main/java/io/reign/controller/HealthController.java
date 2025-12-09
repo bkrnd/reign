@@ -1,4 +1,4 @@
-package io.reign;
+package io.reign.controller;
 
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
