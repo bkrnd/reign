@@ -1,8 +1,9 @@
 package io.reign.controller;
 
+import io.reign.model.Square;
 import io.reign.model.World;
 import io.reign.repository.WorldRepository;
-import jakarta.persistence.PostUpdate;
+import io.reign.service.WorldService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +17,9 @@ public class WorldController {
     @Autowired
     private WorldRepository worldRepository;
 
+    @Autowired
+    private WorldService worldService;
+
     @PostMapping
     public ResponseEntity<World> createWorld(@RequestBody CreateWorldRequest request) {
         // Check if slug already exists
@@ -23,54 +27,78 @@ public class WorldController {
             return ResponseEntity.badRequest().build();
         }
 
-        World world = new World();
-        world.setSlug(request.getSlug());
-        world.setName(request.getName());
-        world.setOwnerId(request.getOwnerId());
-        world.setBoardSize(request.getBoardSize() != null ? request.getBoardSize() : 20);
-        world.setMaxPlayers(request.getMaxPlayers() != null ? request.getMaxPlayers() : 50);
+        World world = worldService.createWorld(
+                request.getSlug(),
+                request.getName(),
+                request.getOwnerId(),
+                request.getBoardSize(),
+                request.getMaxPlayers()
+        );
 
-        World saved = worldRepository.save(world);
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.ok(world);
     }
 
     @GetMapping
     public List<World> getAllWorlds() {
-        return worldRepository.findAll();
+        return worldService.getAllWorlds();
     }
 
     @GetMapping("/{slug}")
     public ResponseEntity<World> getWorldBySlug(@PathVariable String slug) {
-        return worldRepository.findBySlug(slug)
+        return worldService.getWorldBySlug(slug)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/{slug}/board")
+    public ResponseEntity<List<Square>> getWorldBoard(@PathVariable String slug) {
+        // Check if world exists
+        if (worldService.getWorldBySlug(slug).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        List<Square> board = worldService.getWorldBoard(slug);
+        return ResponseEntity.ok(board);
+    }
+
     @PutMapping("/{slug}")
     public ResponseEntity<World> updateWorld(@PathVariable String slug, @RequestBody CreateWorldRequest request) {
-        return worldRepository.findBySlug(slug)
-                .map(world -> {
-                    world.setName(request.getName());
-                    world.setBoardSize(request.getBoardSize() != null ? request.getBoardSize() : world.getBoardSize());
-                    world.setMaxPlayers(request.getMaxPlayers() != null ? request.getMaxPlayers() : world.getMaxPlayers());
-                    World updated = worldRepository.save(world);
-                    return ResponseEntity.ok(updated);
-                })
-                .orElse(ResponseEntity.notFound().build());
+        try {
+            World updated = worldService.updateWorld(
+                    slug,
+                    request.getName(),
+                    request.getOwnerId(),
+                    request.getBoardSize(),
+                    request.getMaxPlayers()
+            );
+            return ResponseEntity.ok(updated);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @DeleteMapping("/{slug}")
     public ResponseEntity<Void> deleteWorld(@PathVariable String slug) {
-        return worldRepository.findBySlug(slug)
-                .map(world -> {
-                    worldRepository.delete(world);
-                    return ResponseEntity.noContent().<Void>build();
-                })
-                .orElse(ResponseEntity.notFound().build());
+        if (worldService.getWorldBySlug(slug).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        worldService.deleteWorld(slug);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{slug}/reset")
+    public ResponseEntity<World> resetBoard(@PathVariable String slug) {
+        try {
+            World world = worldService.resetWorldBoard(slug);
+            return ResponseEntity.ok(world);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 }
 
-// Simple DTO for create request
+// DTO
 class CreateWorldRequest {
     private String slug;
     private String name;
@@ -78,7 +106,6 @@ class CreateWorldRequest {
     private Integer boardSize;
     private Integer maxPlayers;
 
-    // Getters and setters (or use @Data if Lombok)
     public String getSlug() { return slug; }
     public void setSlug(String slug) { this.slug = slug; }
 

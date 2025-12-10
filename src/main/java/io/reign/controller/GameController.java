@@ -1,0 +1,43 @@
+package io.reign.controller;
+
+import io.reign.model.Square;
+import io.reign.service.GameService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/worlds/{worldSlug}/actions")
+public class GameController {
+
+    @Autowired
+    private GameService gameService;
+
+    @PostMapping("/capture")
+    public ResponseEntity<Square> captureSquare(
+            @PathVariable String worldSlug,
+            @RequestBody CaptureRequest request
+    ) {
+        try {
+            Square square = gameService.captureSquare(worldSlug, request.getX(), request.getY(), request.getPlayerId());
+            return ResponseEntity.ok(square);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+}
+
+class CaptureRequest {
+    private int x;
+    private int y;
+    private String playerId;
+
+    public int getX() { return x; }
+    public void setX(int x) { this.x = x; }
+
+    public int getY() { return y; }
+    public void setY(int y) { this.y = y; }
+
+    public String getPlayerId() { return playerId; }
+    public void setPlayerId(String playerId) { this.playerId = playerId; }
+}

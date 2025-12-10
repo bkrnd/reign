@@ -8,27 +8,18 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "worlds")
+@Table(name = "users")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class World {
+public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @Column(unique = true, nullable = false)
-    private String slug;
-
     @Column(nullable = false)
-    private String name;
-
-    private String ownerId;
-
-    private int boardSize = 20;
-
-    private int maxPlayers = 50;
+    private String username;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
