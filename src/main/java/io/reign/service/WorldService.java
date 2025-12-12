@@ -83,6 +83,7 @@ public class WorldService {
 
         for (Square square : squares) {
             square.setOwnerId(null);
+            square.setDefenseBonus(0);
         }
 
         return world;
