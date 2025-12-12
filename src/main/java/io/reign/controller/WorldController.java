@@ -88,9 +88,13 @@ public class WorldController {
     }
 
     @PostMapping("/{slug}/reset")
-    public ResponseEntity<World> resetBoard(@PathVariable String slug) {
+    public ResponseEntity<World> resetBoard(
+            @PathVariable String slug,
+            @RequestBody(required = false) ResetRequest request
+    ) {
         try {
-            World world = worldService.resetWorldBoard(slug);
+            String playerId = request != null ? request.getPlayerId() : null;
+            World world = worldService.resetWorldBoard(slug, playerId);
             return ResponseEntity.ok(world);
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
@@ -120,4 +124,11 @@ class CreateWorldRequest {
 
     public Integer getMaxPlayers() { return maxPlayers; }
     public void setMaxPlayers(Integer maxPlayers) { this.maxPlayers = maxPlayers; }
+}
+
+class ResetRequest {
+    private String playerId;
+
+    public String getPlayerId() { return playerId; }
+    public void setPlayerId(String playerId) { this.playerId = playerId; }
 }

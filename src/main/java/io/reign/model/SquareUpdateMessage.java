@@ -1,17 +1,19 @@
 package io.reign.model;
 
+import java.util.List;
+
 public class SquareUpdateMessage {
     private String type;
-    private Square square;
+    private List<Square> board;
     private String playerId;
     private long timestamp;
 
     public SquareUpdateMessage() {
     }
 
-    public SquareUpdateMessage(String type, Square square, String playerId, long timestamp) {
+    public SquareUpdateMessage(String type, List<Square> board, String playerId, long timestamp) {
         this.type = type;
-        this.square = square;
+        this.board = board;
         this.playerId = playerId;
         this.timestamp = timestamp;
     }
@@ -24,12 +26,12 @@ public class SquareUpdateMessage {
         this.type = type;
     }
 
-    public Square getSquare() {
-        return square;
+    public List<Square> getBoard() {
+        return board;
     }
 
-    public void setSquare(Square square) {
-        this.square = square;
+    public void setBoard(List<Square> board) {
+        this.board = board;
     }
 
     public String getPlayerId() {

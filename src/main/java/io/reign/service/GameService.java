@@ -8,6 +8,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+import java.util.List;
 
 @Service
 public class GameService {
@@ -34,19 +38,9 @@ public class GameService {
 
         // Check if square is unowned (null or empty)
         if (square.getOwnerId() == null || square.getOwnerId().isEmpty()) {
-            // Capture unowned square directly
             square.setOwnerId(playerId);
             Square updated = squareRepository.save(square);
-
-            // Broadcast update via WebSocket
-            SquareUpdateMessage message = new SquareUpdateMessage(
-                "SQUARE_CAPTURED",
-                updated,
-                playerId,
-                System.currentTimeMillis()
-            );
-            messagingTemplate.convertAndSend("/topic/worlds/" + worldSlug, message);
-
+            broadcastAfterCommit(worldSlug, "SQUARE_CAPTURED", updated, playerId);
             return updated;
         }
 
@@ -64,16 +58,7 @@ public class GameService {
         }
 
         Square updated = squareRepository.save(square);
-
-        // Broadcast update via WebSocket
-        SquareUpdateMessage message = new SquareUpdateMessage(
-            "SQUARE_CAPTURED",
-            updated,
-            playerId,
-            System.currentTimeMillis()
-        );
-        messagingTemplate.convertAndSend("/topic/worlds/" + worldSlug, message);
-
+        broadcastAfterCommit(worldSlug, "SQUARE_CAPTURED", updated, playerId);
         return updated;
     }
 
@@ -96,16 +81,25 @@ public class GameService {
         // Defend own square
         square.setDefenseBonus(1);
         Square updated = squareRepository.save(square);
-
-        // Broadcast update via WebSocket
-        SquareUpdateMessage message = new SquareUpdateMessage(
-            "SQUARE_DEFENDED",
-            updated,
-            playerId,
-            System.currentTimeMillis()
-        );
-        messagingTemplate.convertAndSend("/topic/worlds/" + worldSlug, message);
-
+        broadcastAfterCommit(worldSlug, "SQUARE_DEFENDED", updated, playerId);
         return updated;
+    }
+
+    private void broadcastAfterCommit(String worldSlug, String messageType, Square square, String playerId) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                // Fetch entire board state
+                List<Square> board = squareRepository.findByWorldSlug(worldSlug);
+
+                SquareUpdateMessage message = new SquareUpdateMessage(
+                    messageType,
+                    board,
+                    playerId,
+                    System.currentTimeMillis()
+                );
+                messagingTemplate.convertAndSend("/topic/worlds/" + worldSlug, message);
+            }
+        });
     }
 }

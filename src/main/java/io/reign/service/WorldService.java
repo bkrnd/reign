@@ -9,6 +9,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -79,28 +81,29 @@ public class WorldService {
     }
 
     @Transactional
-    public World resetWorldBoard(String slug) {
+    public World resetWorldBoard(String slug, String playerId) {
         World world = worldRepository.findBySlug(slug)
                 .orElseThrow(() -> new RuntimeException("World not found"));
 
-        // Set owners of all squares to null
-        List<Square> squares = squareRepository.findByWorldSlug(slug);
+        // Use bulk update query
+        squareRepository.resetAllSquares(slug);
 
-        for (Square square : squares) {
-            square.setOwnerId(null);
-            square.setDefenseBonus(0);
-        }
+        // Broadcast ONLY AFTER transaction commits
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                // Fetch entire board state
+                List<Square> board = squareRepository.findByWorldSlug(slug);
 
-        squareRepository.saveAll(squares);
-
-        // Broadcast reset via WebSocket
-        SquareUpdateMessage message = new SquareUpdateMessage(
-            "WORLD_RESET",
-            null,
-            null,
-            System.currentTimeMillis()
-        );
-        messagingTemplate.convertAndSend("/topic/worlds/" + slug, message);
+                SquareUpdateMessage message = new SquareUpdateMessage(
+                    "WORLD_RESET",
+                    board,
+                    playerId,
+                    System.currentTimeMillis()
+                );
+                messagingTemplate.convertAndSend("/topic/worlds/" + slug, message);
+            }
+        });
 
         return world;
     }
