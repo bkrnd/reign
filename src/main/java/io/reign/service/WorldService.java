@@ -1,10 +1,12 @@
 package io.reign.service;
 
 import io.reign.model.Square;
+import io.reign.model.SquareUpdateMessage;
 import io.reign.model.World;
 import io.reign.repository.SquareRepository;
 import io.reign.repository.WorldRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,7 +26,10 @@ public class WorldService {
     private SquareRepository squareRepository;
 
     @PersistenceContext
-    private EntityManager entityManager;  // ← Add this
+    private EntityManager entityManager;
+
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
 
     @Transactional
     public World createWorld(String slug, String name, String ownerId, Integer boardSize, Integer maxPlayers) {
@@ -85,6 +90,17 @@ public class WorldService {
             square.setOwnerId(null);
             square.setDefenseBonus(0);
         }
+
+        squareRepository.saveAll(squares);
+
+        // Broadcast reset via WebSocket
+        SquareUpdateMessage message = new SquareUpdateMessage(
+            "WORLD_RESET",
+            null,
+            null,
+            System.currentTimeMillis()
+        );
+        messagingTemplate.convertAndSend("/topic/worlds/" + slug, message);
 
         return world;
     }

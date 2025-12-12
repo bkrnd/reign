@@ -1,9 +1,11 @@
 package io.reign.service;
 
 import io.reign.model.Square;
+import io.reign.model.SquareUpdateMessage;
 import io.reign.repository.SquareRepository;
 import io.reign.repository.WorldRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +17,9 @@ public class GameService {
 
     @Autowired
     private WorldRepository worldRepository;
+
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
 
     @Transactional
     public Square captureSquare(String worldSlug, int x, int y, String playerId) {
@@ -31,7 +36,18 @@ public class GameService {
         if (square.getOwnerId() == null || square.getOwnerId().isEmpty()) {
             // Capture unowned square directly
             square.setOwnerId(playerId);
-            return squareRepository.save(square);
+            Square updated = squareRepository.save(square);
+
+            // Broadcast update via WebSocket
+            SquareUpdateMessage message = new SquareUpdateMessage(
+                "SQUARE_CAPTURED",
+                updated,
+                playerId,
+                System.currentTimeMillis()
+            );
+            messagingTemplate.convertAndSend("/topic/worlds/" + worldSlug, message);
+
+            return updated;
         }
 
         // Prevent capturing own square
@@ -47,7 +63,18 @@ public class GameService {
             square.setOwnerId(playerId);
         }
 
-        return squareRepository.save(square);
+        Square updated = squareRepository.save(square);
+
+        // Broadcast update via WebSocket
+        SquareUpdateMessage message = new SquareUpdateMessage(
+            "SQUARE_CAPTURED",
+            updated,
+            playerId,
+            System.currentTimeMillis()
+        );
+        messagingTemplate.convertAndSend("/topic/worlds/" + worldSlug, message);
+
+        return updated;
     }
 
     @Transactional
@@ -68,6 +95,17 @@ public class GameService {
 
         // Defend own square
         square.setDefenseBonus(1);
-        return squareRepository.save(square);
+        Square updated = squareRepository.save(square);
+
+        // Broadcast update via WebSocket
+        SquareUpdateMessage message = new SquareUpdateMessage(
+            "SQUARE_DEFENDED",
+            updated,
+            playerId,
+            System.currentTimeMillis()
+        );
+        messagingTemplate.convertAndSend("/topic/worlds/" + worldSlug, message);
+
+        return updated;
     }
 }
