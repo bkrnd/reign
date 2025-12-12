@@ -25,9 +25,37 @@ public class GameController {
             return ResponseEntity.badRequest().build();
         }
     }
+
+    @PostMapping("defend")
+    public ResponseEntity<Square> defendSquare(
+            @PathVariable String worldSlug,
+            @RequestBody DefendRequest request
+    ) {
+        try {
+            Square square = gameService.defendSquare(worldSlug, request.getX(), request.getY(), request.getPlayerId());
+            return ResponseEntity.ok(square);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
 }
 
 class CaptureRequest {
+    private int x;
+    private int y;
+    private String playerId;
+
+    public int getX() { return x; }
+    public void setX(int x) { this.x = x; }
+
+    public int getY() { return y; }
+    public void setY(int y) { this.y = y; }
+
+    public String getPlayerId() { return playerId; }
+    public void setPlayerId(String playerId) { this.playerId = playerId; }
+}
+
+class DefendRequest {
     private int x;
     private int y;
     private String playerId;
