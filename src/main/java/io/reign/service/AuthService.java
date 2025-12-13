@@ -104,4 +104,8 @@ public class AuthService {
 
         userRepository.delete(user);
     }
+
+    public String generateTokenForUser(User user) {
+        return jwtService.generateToken(user);
+    }
 }
