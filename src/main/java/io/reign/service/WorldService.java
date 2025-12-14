@@ -2,8 +2,10 @@ package io.reign.service;
 
 import io.reign.model.Square;
 import io.reign.model.SquareUpdateMessage;
+import io.reign.model.User;
 import io.reign.model.World;
 import io.reign.repository.SquareRepository;
+import io.reign.repository.UserRepository;
 import io.reign.repository.WorldRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -25,6 +27,9 @@ public class WorldService {
     private WorldRepository worldRepository;
 
     @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
     private SquareRepository squareRepository;
 
     @PersistenceContext
@@ -38,13 +43,17 @@ public class WorldService {
         World world = new World();
         world.setSlug(slug);
         world.setName(name);
-        world.setOwnerId(ownerId);
+        if (ownerId != null) {
+            User owner = userRepository.findById(ownerId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+            world.setOwner(owner);
+        }
         world.setBoardSize(boardSize != null ? boardSize : 20);
         world.setMaxPlayers(maxPlayers != null ? maxPlayers : 50);
 
         World saved = worldRepository.save(world);
 
-        initializeBoard(slug, saved.getBoardSize());
+        initializeBoard(saved, saved.getBoardSize());
 
         return saved;
     }
@@ -57,7 +66,11 @@ public class WorldService {
         int oldBoardSize = world.getBoardSize();
 
         if (name != null) world.setName(name);
-        if (ownerId != null) world.setOwnerId(ownerId);
+        if (ownerId != null) {
+            User owner = userRepository.findById(ownerId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+            world.setOwner(owner);
+        }
         if (boardSize != null) world.setBoardSize(boardSize);
         if (maxPlayers != null) world.setMaxPlayers(maxPlayers);
 
@@ -65,7 +78,7 @@ public class WorldService {
 
         // Reset board if size changed
         if (boardSize != null && boardSize != oldBoardSize) {
-            resetBoard(slug, boardSize);
+            resetBoard(updated, boardSize);
         }
 
         return updated;
@@ -73,11 +86,11 @@ public class WorldService {
 
     @Transactional
     public void deleteWorld(String slug) {
-        List<Square> squares = squareRepository.findByWorldSlug(slug);
-        squareRepository.deleteAll(squares);
+        World world = worldRepository.findBySlug(slug)
+                .orElseThrow(() -> new RuntimeException("World not found"));
 
-        worldRepository.findBySlug(slug)
-                .ifPresent(worldRepository::delete);
+        squareRepository.deleteByWorld(world);
+        worldRepository.delete(world);
     }
 
     @Transactional
@@ -86,14 +99,14 @@ public class WorldService {
                 .orElseThrow(() -> new RuntimeException("World not found"));
 
         // Use bulk update query
-        squareRepository.resetAllSquares(slug);
+        squareRepository.resetAllSquares(world);
 
         // Broadcast ONLY AFTER transaction commits
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
                 // Fetch entire board state
-                List<Square> board = squareRepository.findByWorldSlug(slug);
+                List<Square> board = squareRepository.findByWorld(world);
 
                 SquareUpdateMessage message = new SquareUpdateMessage(
                     "WORLD_RESET",
@@ -108,16 +121,16 @@ public class WorldService {
         return world;
     }
 
-    private void initializeBoard(String worldSlug, int boardSize) {
+    private void initializeBoard(World world, int boardSize) {
         List<Square> squares = new ArrayList<>();
 
         for (int x = 0; x < boardSize; x++) {
             for (int y = 0; y < boardSize; y++) {
                 Square square = new Square();
-                square.setWorldSlug(worldSlug);
+                square.setWorld(world);
                 square.setX(x);
                 square.setY(y);
-                square.setOwnerId(null);
+                square.setOwner(null);
                 square.setDefenseBonus(0);
                 squares.add(square);
             }
@@ -126,17 +139,16 @@ public class WorldService {
         squareRepository.saveAll(squares);
     }
 
-    private void resetBoard(String worldSlug, int newBoardSize) {
+    private void resetBoard(World world, int newBoardSize) {
         // Delete old squares
-        List<Square> oldSquares = squareRepository.findByWorldSlug(worldSlug);
-        squareRepository.deleteAll(oldSquares);
+        squareRepository.deleteByWorld(world);
 
         // FORCE deletion to complete before inserting new squares
         entityManager.flush();
         entityManager.clear();
 
         // Create new board
-        initializeBoard(worldSlug, newBoardSize);
+        initializeBoard(world, newBoardSize);
     }
 
     public List<World> getAllWorlds() {
@@ -148,6 +160,8 @@ public class WorldService {
     }
 
     public List<Square> getWorldBoard(String worldSlug) {
-        return squareRepository.findByWorldSlug(worldSlug);
+        World world = worldRepository.findBySlug(worldSlug)
+                .orElseThrow(() -> new RuntimeException("World not found"));
+        return squareRepository.findByWorld(world);
     }
 }

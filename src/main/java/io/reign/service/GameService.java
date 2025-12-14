@@ -2,7 +2,10 @@ package io.reign.service;
 
 import io.reign.model.Square;
 import io.reign.model.SquareUpdateMessage;
+import io.reign.model.User;
+import io.reign.model.World;
 import io.reign.repository.SquareRepository;
+import io.reign.repository.UserRepository;
 import io.reign.repository.WorldRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -23,29 +26,35 @@ public class GameService {
     private WorldRepository worldRepository;
 
     @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
     @Transactional
     public Square captureSquare(String worldSlug, int x, int y, String playerId) {
-        // Check if world exists
-        if (!worldRepository.existsBySlug(worldSlug)) {
-            throw new IllegalArgumentException("World not found");
-        }
+        // Fetch world
+        World world = worldRepository.findBySlug(worldSlug)
+                .orElseThrow(() -> new IllegalArgumentException("World not found"));
+
+        // Fetch player
+        User player = userRepository.findById(playerId)
+                .orElseThrow(() -> new IllegalArgumentException("Player not found"));
 
         // Find the square
-        Square square = squareRepository.findByWorldSlugAndXAndY(worldSlug, x, y)
+        Square square = squareRepository.findByWorldAndXAndY(world, x, y)
                 .orElseThrow(() -> new IllegalArgumentException("Square not found"));
 
-        // Check if square is unowned (null or empty)
-        if (square.getOwnerId() == null || square.getOwnerId().isEmpty()) {
-            square.setOwnerId(playerId);
+        // Check if square is unowned
+        if (square.getOwner() == null) {
+            square.setOwner(player);
             Square updated = squareRepository.save(square);
             broadcastAfterCommit(worldSlug, "SQUARE_CAPTURED", updated, playerId);
             return updated;
         }
 
         // Prevent capturing own square
-        if (square.getOwnerId().equals(playerId)) {
+        if (square.getOwner().getId().equals(playerId)) {
             throw new IllegalArgumentException("Square is already owned by the player");
         }
 
@@ -54,7 +63,7 @@ public class GameService {
             square.setDefenseBonus(square.getDefenseBonus() - 1);
         } else {
             // Capture the square
-            square.setOwnerId(playerId);
+            square.setOwner(player);
         }
 
         Square updated = squareRepository.save(square);
@@ -64,17 +73,16 @@ public class GameService {
 
     @Transactional
     public Square defendSquare(String worldSlug, int x, int y, String playerId) {
-        // Check if world exists
-        if (!worldRepository.existsBySlug(worldSlug)) {
-            throw new IllegalArgumentException("World not found");
-        }
+        // Fetch world
+        World world = worldRepository.findBySlug(worldSlug)
+                .orElseThrow(() -> new IllegalArgumentException("World not found"));
 
         // Find the square
-        Square square = squareRepository.findByWorldSlugAndXAndY(worldSlug, x, y)
+        Square square = squareRepository.findByWorldAndXAndY(world, x, y)
                 .orElseThrow(() -> new IllegalArgumentException("Square not found"));
 
         // Check if square is owned by the player
-        if (!playerId.equals(square.getOwnerId())) {
+        if (square.getOwner() == null || !playerId.equals(square.getOwner().getId())) {
             throw new IllegalArgumentException("Square is not owned by the player");
         }
 
@@ -89,8 +97,10 @@ public class GameService {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                // Fetch entire board state
-                List<Square> board = squareRepository.findByWorldSlug(worldSlug);
+                // Fetch world and entire board state
+                World world = worldRepository.findBySlug(worldSlug)
+                        .orElseThrow(() -> new IllegalArgumentException("World not found"));
+                List<Square> board = squareRepository.findByWorld(world);
 
                 SquareUpdateMessage message = new SquareUpdateMessage(
                     messageType,
