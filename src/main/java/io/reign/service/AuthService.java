@@ -30,6 +30,9 @@ public class AuthService {
     @Autowired
     private AuthenticationManager authenticationManager;
 
+    @Autowired
+    private TeamService teamService;
+
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new IllegalArgumentException("Username already exists");
@@ -102,6 +105,10 @@ public class AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
+        // Cleanup user data (squares, team memberships, empty teams)
+        teamService.cleanupUserData(userId);
+
+        // Delete the user
         userRepository.delete(user);
     }
 

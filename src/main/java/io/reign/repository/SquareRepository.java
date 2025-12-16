@@ -1,6 +1,7 @@
 package io.reign.repository;
 
 import io.reign.model.Square;
+import io.reign.model.World;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -13,13 +14,21 @@ import java.util.Optional;
 @Repository
 public interface SquareRepository extends JpaRepository<Square, String> {
 
-    List<Square> findByWorldSlug(String worldSlug);
+    List<Square> findByWorld(World world);
 
-    Optional<Square> findByWorldSlugAndXAndY(String worldSlug, int x, int y);
+    Optional<Square> findByWorldAndXAndY(World world, int x, int y);
 
-    void deleteByWorldSlug(String worldSlug);
+    void deleteByWorld(World world);
 
     @Modifying
-    @Query("UPDATE Square s SET s.ownerId = NULL, s.defenseBonus = 0 WHERE s.worldSlug = :worldSlug")
-    int resetAllSquares(@Param("worldSlug") String worldSlug);
+    @Query("UPDATE Square s SET s.owner = NULL, s.defenseBonus = 0 WHERE s.world = :world")
+    int resetAllSquares(@Param("world") World world);
+
+    @Modifying
+    @Query("UPDATE Square s SET s.owner = NULL, s.defenseBonus = 0 WHERE s.owner.id = :userId AND s.world = :world")
+    int resetSquaresByUserAndWorld(@Param("userId") String userId, @Param("world") World world);
+
+    @Modifying
+    @Query("UPDATE Square s SET s.owner = NULL, s.defenseBonus = 0 WHERE s.owner.id = :userId")
+    int resetSquaresByUser(@Param("userId") String userId);
 }

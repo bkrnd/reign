@@ -1,9 +1,11 @@
 package io.reign.controller;
 
 import io.reign.model.Square;
+import io.reign.model.User;
 import io.reign.service.GameService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -16,23 +18,25 @@ public class GameController {
     @PostMapping("/capture")
     public ResponseEntity<Square> captureSquare(
             @PathVariable String worldSlug,
-            @RequestBody CaptureRequest request
+            @RequestBody CaptureRequest request,
+            @AuthenticationPrincipal User authenticatedUser
     ) {
         try {
-            Square square = gameService.captureSquare(worldSlug, request.getX(), request.getY(), request.getPlayerId());
+            Square square = gameService.captureSquare(worldSlug, request.getX(), request.getY(), authenticatedUser.getId());
             return ResponseEntity.ok(square);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         }
     }
 
-    @PostMapping("defend")
+    @PostMapping("/defend")
     public ResponseEntity<Square> defendSquare(
             @PathVariable String worldSlug,
-            @RequestBody DefendRequest request
+            @RequestBody DefendRequest request,
+            @AuthenticationPrincipal User authenticatedUser
     ) {
         try {
-            Square square = gameService.defendSquare(worldSlug, request.getX(), request.getY(), request.getPlayerId());
+            Square square = gameService.defendSquare(worldSlug, request.getX(), request.getY(), authenticatedUser.getId());
             return ResponseEntity.ok(square);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
@@ -43,29 +47,21 @@ public class GameController {
 class CaptureRequest {
     private int x;
     private int y;
-    private String playerId;
 
     public int getX() { return x; }
     public void setX(int x) { this.x = x; }
 
     public int getY() { return y; }
     public void setY(int y) { this.y = y; }
-
-    public String getPlayerId() { return playerId; }
-    public void setPlayerId(String playerId) { this.playerId = playerId; }
 }
 
 class DefendRequest {
     private int x;
     private int y;
-    private String playerId;
 
     public int getX() { return x; }
     public void setX(int x) { this.x = x; }
 
     public int getY() { return y; }
     public void setY(int y) { this.y = y; }
-
-    public String getPlayerId() { return playerId; }
-    public void setPlayerId(String playerId) { this.playerId = playerId; }
 }

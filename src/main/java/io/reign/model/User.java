@@ -1,5 +1,6 @@
 package io.reign.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.reign.enums.Role;
 import io.reign.enums.UserType;
 import jakarta.persistence.*;
@@ -28,6 +29,7 @@ public class User implements UserDetails {
     @Column(nullable = false, unique = true)
     private String username;
 
+    @JsonIgnore
     @Column(nullable = true)
     private String password;
 
@@ -39,6 +41,22 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private Role role = Role.USER;
 
+    @JsonIgnore
+    @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<World> worlds;
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "owner", fetch = FetchType.LAZY)
+    private List<Square> ownedSquares;
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "creator", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Team> createdTeams;
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<TeamMember> teamMemberships;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -48,26 +66,31 @@ public class User implements UserDetails {
     }
 
     @Override
+    @JsonIgnore
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
 
     @Override
+    @JsonIgnore
     public boolean isAccountNonExpired() {
         return UserDetails.super.isAccountNonExpired();
     }
 
     @Override
+    @JsonIgnore
     public boolean isAccountNonLocked() {
         return UserDetails.super.isAccountNonLocked();
     }
 
     @Override
+    @JsonIgnore
     public boolean isCredentialsNonExpired() {
         return UserDetails.super.isCredentialsNonExpired();
     }
 
     @Override
+    @JsonIgnore
     public boolean isEnabled() {
         return UserDetails.super.isEnabled();
     }
