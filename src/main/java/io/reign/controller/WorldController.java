@@ -1,11 +1,13 @@
 package io.reign.controller;
 
 import io.reign.model.Square;
+import io.reign.model.User;
 import io.reign.model.World;
 import io.reign.repository.WorldRepository;
 import io.reign.service.WorldService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,23 +23,33 @@ public class WorldController {
     private WorldService worldService;
 
     @PostMapping
-    public ResponseEntity<World> createWorld(@RequestBody CreateWorldRequest request) {
+    public ResponseEntity<World> createWorld(
+            @RequestBody CreateWorldRequest request,
+            @AuthenticationPrincipal User authenticatedUser
+    ) {
+        // Check if user is authenticated
+        if (authenticatedUser == null) {
+            return ResponseEntity.status(401).build();
+        }
+
         // Check if slug already exists
         if (worldRepository.existsBySlug(request.getSlug())) {
             return ResponseEntity.badRequest().build();
         }
 
+        // Use authenticated user as owner (ignore ownerId from request)
         World world = worldService.createWorld(
                 request.getSlug(),
                 request.getName(),
-                request.getOwnerId(),
+                authenticatedUser.getId(),
                 request.getBoardSize(),
                 request.getMaxPlayers(),
                 request.getMaxTeams(),
                 request.getMinTeams(),
                 request.getMaxTeamSize(),
                 request.getMinTeamSize(),
-                request.getAllowPlayerTeamCreation()
+                request.getAllowPlayerTeamCreation(),
+                request.getIsPublic()
         );
 
         return ResponseEntity.ok(world);
@@ -45,7 +57,7 @@ public class WorldController {
 
     @GetMapping
     public List<World> getAllWorlds() {
-        return worldService.getAllWorlds();
+        return worldService.getPublicWorlds();
     }
 
     @GetMapping("/{slug}")
@@ -67,19 +79,36 @@ public class WorldController {
     }
 
     @PutMapping("/{slug}")
-    public ResponseEntity<World> updateWorld(@PathVariable String slug, @RequestBody CreateWorldRequest request) {
+    public ResponseEntity<World> updateWorld(
+            @PathVariable String slug,
+            @RequestBody CreateWorldRequest request,
+            @AuthenticationPrincipal User authenticatedUser
+    ) {
+        // Check if world exists
+        World world = worldService.getWorldBySlug(slug).orElse(null);
+        if (world == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // Check if authenticated user is the owner
+        if (authenticatedUser == null || !world.getOwner().getId().equals(authenticatedUser.getId())) {
+            return ResponseEntity.status(403).build();
+        }
+
         try {
+            // Don't allow ownership changes (pass null for ownerId)
             World updated = worldService.updateWorld(
                     slug,
                     request.getName(),
-                    request.getOwnerId(),
+                    null,
                     request.getBoardSize(),
                     request.getMaxPlayers(),
                     request.getMaxTeams(),
                     request.getMinTeams(),
                     request.getMaxTeamSize(),
                     request.getMinTeamSize(),
-                    request.getAllowPlayerTeamCreation()
+                    request.getAllowPlayerTeamCreation(),
+                    request.getIsPublic()
             );
             return ResponseEntity.ok(updated);
         } catch (RuntimeException e) {
@@ -88,9 +117,19 @@ public class WorldController {
     }
 
     @DeleteMapping("/{slug}")
-    public ResponseEntity<Void> deleteWorld(@PathVariable String slug) {
-        if (worldService.getWorldBySlug(slug).isEmpty()) {
+    public ResponseEntity<Void> deleteWorld(
+            @PathVariable String slug,
+            @AuthenticationPrincipal User authenticatedUser
+    ) {
+        // Check if world exists
+        World world = worldService.getWorldBySlug(slug).orElse(null);
+        if (world == null) {
             return ResponseEntity.notFound().build();
+        }
+
+        // Check if authenticated user is the owner
+        if (authenticatedUser == null || !world.getOwner().getId().equals(authenticatedUser.getId())) {
+            return ResponseEntity.status(403).build();
         }
 
         worldService.deleteWorld(slug);
@@ -100,12 +139,24 @@ public class WorldController {
     @PostMapping("/{slug}/reset")
     public ResponseEntity<World> resetBoard(
             @PathVariable String slug,
-            @RequestBody(required = false) ResetRequest request
+            @RequestBody(required = false) ResetRequest request,
+            @AuthenticationPrincipal User authenticatedUser
     ) {
+        // Check if world exists
+        World world = worldService.getWorldBySlug(slug).orElse(null);
+        if (world == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // Check if authenticated user is the owner
+        if (authenticatedUser == null || !world.getOwner().getId().equals(authenticatedUser.getId())) {
+            return ResponseEntity.status(403).build();
+        }
+
         try {
             String playerId = request != null ? request.getPlayerId() : null;
-            World world = worldService.resetWorldBoard(slug, playerId);
-            return ResponseEntity.ok(world);
+            World resetWorld = worldService.resetWorldBoard(slug, playerId);
+            return ResponseEntity.ok(resetWorld);
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
@@ -124,6 +175,7 @@ class CreateWorldRequest {
     private Integer maxTeamSize;
     private Integer minTeamSize;
     private Boolean allowPlayerTeamCreation;
+    private Boolean isPublic;
 
     public String getSlug() { return slug; }
     public void setSlug(String slug) { this.slug = slug; }
@@ -154,6 +206,9 @@ class CreateWorldRequest {
 
     public Boolean getAllowPlayerTeamCreation() { return allowPlayerTeamCreation; }
     public void setAllowPlayerTeamCreation(Boolean allowPlayerTeamCreation) { this.allowPlayerTeamCreation = allowPlayerTeamCreation; }
+
+    public Boolean getIsPublic() { return isPublic; }
+    public void setIsPublic(Boolean isPublic) { this.isPublic = isPublic; }
 }
 
 class ResetRequest {

@@ -41,7 +41,7 @@ public class WorldService {
     @Transactional
     public World createWorld(String slug, String name, String ownerId, Integer boardSize, Integer maxPlayers,
                             Integer maxTeams, Integer minTeams, Integer maxTeamSize, Integer minTeamSize,
-                            Boolean allowPlayerTeamCreation) {
+                            Boolean allowPlayerTeamCreation, Boolean isPublic) {
         World world = new World();
         world.setSlug(slug);
         world.setName(name);
@@ -57,6 +57,7 @@ public class WorldService {
         world.setMaxTeamSize(maxTeamSize != null ? maxTeamSize : 3);
         world.setMinTeamSize(minTeamSize != null ? minTeamSize : 1);
         world.setAllowPlayerTeamCreation(allowPlayerTeamCreation != null ? allowPlayerTeamCreation : true);
+        world.setPublic(isPublic != null ? isPublic : true);
 
         World saved = worldRepository.save(world);
 
@@ -68,7 +69,7 @@ public class WorldService {
     @Transactional
     public World updateWorld(String slug, String name, String ownerId, Integer boardSize, Integer maxPlayers,
                             Integer maxTeams, Integer minTeams, Integer maxTeamSize, Integer minTeamSize,
-                            Boolean allowPlayerTeamCreation) {
+                            Boolean allowPlayerTeamCreation, Boolean isPublic) {
         World world = worldRepository.findBySlug(slug)
                 .orElseThrow(() -> new RuntimeException("World not found"));
 
@@ -87,6 +88,7 @@ public class WorldService {
         if (maxTeamSize != null) world.setMaxTeamSize(maxTeamSize);
         if (minTeamSize != null) world.setMinTeamSize(minTeamSize);
         if (allowPlayerTeamCreation != null) world.setAllowPlayerTeamCreation(allowPlayerTeamCreation);
+        if (isPublic != null) world.setPublic(isPublic);
 
         World updated = worldRepository.save(world);
 
@@ -167,6 +169,10 @@ public class WorldService {
 
     public List<World> getAllWorlds() {
         return worldRepository.findAllWithTeamsAndMembers();
+    }
+
+    public List<World> getPublicWorlds() {
+        return worldRepository.findByIsPublicTrueWithTeamsAndMembers();
     }
 
     public Optional<World> getWorldBySlug(String slug) {

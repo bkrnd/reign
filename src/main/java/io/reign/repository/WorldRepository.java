@@ -19,6 +19,9 @@ public interface WorldRepository extends JpaRepository<World, String> {
     @Query("SELECT DISTINCT w FROM World w LEFT JOIN FETCH w.teams t LEFT JOIN FETCH t.members")
     List<World> findAllWithTeamsAndMembers();
 
+    @Query("SELECT DISTINCT w FROM World w LEFT JOIN FETCH w.teams t LEFT JOIN FETCH t.members WHERE w.isPublic = true")
+    List<World> findByIsPublicTrueWithTeamsAndMembers();
+
     @Query("SELECT DISTINCT w FROM World w LEFT JOIN FETCH w.teams t LEFT JOIN FETCH t.members WHERE w.id = :id")
     Optional<World> findByIdWithTeamsAndMembers(@Param("id") String id);
 
