@@ -32,7 +32,12 @@ public class WorldController {
                 request.getName(),
                 request.getOwnerId(),
                 request.getBoardSize(),
-                request.getMaxPlayers()
+                request.getMaxPlayers(),
+                request.getMaxTeams(),
+                request.getMinTeams(),
+                request.getMaxTeamSize(),
+                request.getMinTeamSize(),
+                request.getAllowPlayerTeamCreation()
         );
 
         return ResponseEntity.ok(world);
@@ -69,7 +74,12 @@ public class WorldController {
                     request.getName(),
                     request.getOwnerId(),
                     request.getBoardSize(),
-                    request.getMaxPlayers()
+                    request.getMaxPlayers(),
+                    request.getMaxTeams(),
+                    request.getMinTeams(),
+                    request.getMaxTeamSize(),
+                    request.getMinTeamSize(),
+                    request.getAllowPlayerTeamCreation()
             );
             return ResponseEntity.ok(updated);
         } catch (RuntimeException e) {
@@ -109,6 +119,11 @@ class CreateWorldRequest {
     private String ownerId;
     private Integer boardSize;
     private Integer maxPlayers;
+    private Integer maxTeams;
+    private Integer minTeams;
+    private Integer maxTeamSize;
+    private Integer minTeamSize;
+    private Boolean allowPlayerTeamCreation;
 
     public String getSlug() { return slug; }
     public void setSlug(String slug) { this.slug = slug; }
@@ -124,6 +139,21 @@ class CreateWorldRequest {
 
     public Integer getMaxPlayers() { return maxPlayers; }
     public void setMaxPlayers(Integer maxPlayers) { this.maxPlayers = maxPlayers; }
+
+    public Integer getMaxTeams() { return maxTeams; }
+    public void setMaxTeams(Integer maxTeams) { this.maxTeams = maxTeams; }
+
+    public Integer getMinTeams() { return minTeams; }
+    public void setMinTeams(Integer minTeams) { this.minTeams = minTeams; }
+
+    public Integer getMaxTeamSize() { return maxTeamSize; }
+    public void setMaxTeamSize(Integer maxTeamSize) { this.maxTeamSize = maxTeamSize; }
+
+    public Integer getMinTeamSize() { return minTeamSize; }
+    public void setMinTeamSize(Integer minTeamSize) { this.minTeamSize = minTeamSize; }
+
+    public Boolean getAllowPlayerTeamCreation() { return allowPlayerTeamCreation; }
+    public void setAllowPlayerTeamCreation(Boolean allowPlayerTeamCreation) { this.allowPlayerTeamCreation = allowPlayerTeamCreation; }
 }
 
 class ResetRequest {

@@ -26,7 +26,7 @@ public class GameController {
         }
     }
 
-    @PostMapping("defend")
+    @PostMapping("/defend")
     public ResponseEntity<Square> defendSquare(
             @PathVariable String worldSlug,
             @RequestBody DefendRequest request

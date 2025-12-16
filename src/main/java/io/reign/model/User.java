@@ -49,6 +49,14 @@ public class User implements UserDetails {
     @OneToMany(mappedBy = "owner", fetch = FetchType.LAZY)
     private List<Square> ownedSquares;
 
+    @JsonIgnore
+    @OneToMany(mappedBy = "creator", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Team> createdTeams;
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<TeamMember> teamMemberships;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

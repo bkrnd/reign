@@ -9,6 +9,7 @@ import io.reign.repository.UserRepository;
 import io.reign.repository.WorldRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -31,6 +32,7 @@ public class GameService {
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
+    @PreAuthorize("hasPermission(#worldSlug, 'WORLD_MEMBER')")
     @Transactional
     public Square captureSquare(String worldSlug, int x, int y, String playerId) {
         // Fetch world
@@ -71,6 +73,7 @@ public class GameService {
         return updated;
     }
 
+    @PreAuthorize("hasPermission(#worldSlug, 'WORLD_MEMBER')")
     @Transactional
     public Square defendSquare(String worldSlug, int x, int y, String playerId) {
         // Fetch world

@@ -39,7 +39,9 @@ public class WorldService {
     private SimpMessagingTemplate messagingTemplate;
 
     @Transactional
-    public World createWorld(String slug, String name, String ownerId, Integer boardSize, Integer maxPlayers) {
+    public World createWorld(String slug, String name, String ownerId, Integer boardSize, Integer maxPlayers,
+                            Integer maxTeams, Integer minTeams, Integer maxTeamSize, Integer minTeamSize,
+                            Boolean allowPlayerTeamCreation) {
         World world = new World();
         world.setSlug(slug);
         world.setName(name);
@@ -49,7 +51,12 @@ public class WorldService {
             world.setOwner(owner);
         }
         world.setBoardSize(boardSize != null ? boardSize : 20);
-        world.setMaxPlayers(maxPlayers != null ? maxPlayers : 50);
+        world.setMaxPlayers(maxPlayers != null ? maxPlayers : 6);
+        world.setMaxTeams(maxTeams != null ? maxTeams : 6);
+        world.setMinTeams(minTeams != null ? minTeams : 2);
+        world.setMaxTeamSize(maxTeamSize != null ? maxTeamSize : 3);
+        world.setMinTeamSize(minTeamSize != null ? minTeamSize : 1);
+        world.setAllowPlayerTeamCreation(allowPlayerTeamCreation != null ? allowPlayerTeamCreation : true);
 
         World saved = worldRepository.save(world);
 
@@ -59,7 +66,9 @@ public class WorldService {
     }
 
     @Transactional
-    public World updateWorld(String slug, String name, String ownerId, Integer boardSize, Integer maxPlayers) {
+    public World updateWorld(String slug, String name, String ownerId, Integer boardSize, Integer maxPlayers,
+                            Integer maxTeams, Integer minTeams, Integer maxTeamSize, Integer minTeamSize,
+                            Boolean allowPlayerTeamCreation) {
         World world = worldRepository.findBySlug(slug)
                 .orElseThrow(() -> new RuntimeException("World not found"));
 
@@ -73,6 +82,11 @@ public class WorldService {
         }
         if (boardSize != null) world.setBoardSize(boardSize);
         if (maxPlayers != null) world.setMaxPlayers(maxPlayers);
+        if (maxTeams != null) world.setMaxTeams(maxTeams);
+        if (minTeams != null) world.setMinTeams(minTeams);
+        if (maxTeamSize != null) world.setMaxTeamSize(maxTeamSize);
+        if (minTeamSize != null) world.setMinTeamSize(minTeamSize);
+        if (allowPlayerTeamCreation != null) world.setAllowPlayerTeamCreation(allowPlayerTeamCreation);
 
         World updated = worldRepository.save(world);
 
@@ -152,15 +166,15 @@ public class WorldService {
     }
 
     public List<World> getAllWorlds() {
-        return worldRepository.findAll();
+        return worldRepository.findAllWithTeamsAndMembers();
     }
 
     public Optional<World> getWorldBySlug(String slug) {
-        return worldRepository.findBySlug(slug);
+        return worldRepository.findBySlugWithTeamsAndMembers(slug);
     }
 
     public List<Square> getWorldBoard(String worldSlug) {
-        World world = worldRepository.findBySlug(worldSlug)
+        World world = worldRepository.findBySlugWithTeamsAndMembers(worldSlug)
                 .orElseThrow(() -> new RuntimeException("World not found"));
         return squareRepository.findByWorld(world);
     }
