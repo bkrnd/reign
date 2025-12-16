@@ -121,12 +121,14 @@ public class WorldService {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                // Fetch entire board state
+                // Fetch entire board state and teams
+                World updatedWorld = worldRepository.findBySlugWithTeamsAndMembers(slug).orElse(world);
                 List<Square> board = squareRepository.findByWorld(world);
 
                 SquareUpdateMessage message = new SquareUpdateMessage(
                     "WORLD_RESET",
                     board,
+                    updatedWorld.getTeams(),
                     playerId,
                     System.currentTimeMillis()
                 );

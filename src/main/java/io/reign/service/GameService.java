@@ -2,6 +2,7 @@ package io.reign.service;
 
 import io.reign.model.Square;
 import io.reign.model.SquareUpdateMessage;
+import io.reign.model.Team;
 import io.reign.model.User;
 import io.reign.model.World;
 import io.reign.repository.SquareRepository;
@@ -16,6 +17,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class GameService {
@@ -32,12 +34,21 @@ public class GameService {
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
+    @Autowired
+    private TeamService teamService;
+
     @PreAuthorize("hasPermission(#worldSlug, 'WORLD_MEMBER')")
     @Transactional
     public Square captureSquare(String worldSlug, int x, int y, String playerId) {
         // Fetch world
         World world = worldRepository.findBySlug(worldSlug)
                 .orElseThrow(() -> new IllegalArgumentException("World not found"));
+
+        // Verify player is in a team
+        Optional<Team> playerTeam = teamService.getUserTeamInWorld(worldSlug, playerId);
+        if (playerTeam.isEmpty()) {
+            throw new IllegalStateException("Player must be in a team to perform actions");
+        }
 
         // Fetch player
         User player = userRepository.findById(playerId)
@@ -80,6 +91,12 @@ public class GameService {
         World world = worldRepository.findBySlug(worldSlug)
                 .orElseThrow(() -> new IllegalArgumentException("World not found"));
 
+        // Verify player is in a team
+        Optional<Team> playerTeam = teamService.getUserTeamInWorld(worldSlug, playerId);
+        if (playerTeam.isEmpty()) {
+            throw new IllegalStateException("Player must be in a team to perform actions");
+        }
+
         // Find the square
         Square square = squareRepository.findByWorldAndXAndY(world, x, y)
                 .orElseThrow(() -> new IllegalArgumentException("Square not found"));
@@ -100,14 +117,15 @@ public class GameService {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                // Fetch world and entire board state
-                World world = worldRepository.findBySlug(worldSlug)
+                // Fetch world and entire board state with teams
+                World world = worldRepository.findBySlugWithTeamsAndMembers(worldSlug)
                         .orElseThrow(() -> new IllegalArgumentException("World not found"));
                 List<Square> board = squareRepository.findByWorld(world);
 
                 SquareUpdateMessage message = new SquareUpdateMessage(
                     messageType,
                     board,
+                    world.getTeams(),
                     playerId,
                     System.currentTimeMillis()
                 );

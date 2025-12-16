@@ -23,4 +23,12 @@ public interface SquareRepository extends JpaRepository<Square, String> {
     @Modifying
     @Query("UPDATE Square s SET s.owner = NULL, s.defenseBonus = 0 WHERE s.world = :world")
     int resetAllSquares(@Param("world") World world);
+
+    @Modifying
+    @Query("UPDATE Square s SET s.owner = NULL, s.defenseBonus = 0 WHERE s.owner.id = :userId AND s.world = :world")
+    int resetSquaresByUserAndWorld(@Param("userId") String userId, @Param("world") World world);
+
+    @Modifying
+    @Query("UPDATE Square s SET s.owner = NULL, s.defenseBonus = 0 WHERE s.owner.id = :userId")
+    int resetSquaresByUser(@Param("userId") String userId);
 }

@@ -39,7 +39,7 @@ public class Team {
     private User creator;
 
     @OneToMany(mappedBy = "team", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private Set<TeamMember> members;
+    private Set<TeamMember> members = new java.util.HashSet<>();
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

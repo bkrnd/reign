@@ -18,6 +18,6 @@ public interface TeamRepository extends JpaRepository<Team, String> {
 
     int countByWorldId(String worldId);
 
-    @Query("SELECT t FROM Team t LEFT JOIN FETCH t.members WHERE t.id = :id")
+    @Query("SELECT DISTINCT t FROM Team t LEFT JOIN FETCH t.members m LEFT JOIN FETCH m.user LEFT JOIN FETCH t.creator WHERE t.id = :id")
     Optional<Team> findByIdWithMembers(@Param("id") String id);
 }

@@ -7,6 +7,7 @@ import io.reign.repository.WorldRepository;
 import io.reign.service.WorldService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -67,6 +68,7 @@ public class WorldController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @PreAuthorize("hasPermission(#slug, 'WORLD_MEMBER')")
     @GetMapping("/{slug}/board")
     public ResponseEntity<List<Square>> getWorldBoard(@PathVariable String slug) {
         // Check if world exists
@@ -139,7 +141,6 @@ public class WorldController {
     @PostMapping("/{slug}/reset")
     public ResponseEntity<World> resetBoard(
             @PathVariable String slug,
-            @RequestBody(required = false) ResetRequest request,
             @AuthenticationPrincipal User authenticatedUser
     ) {
         // Check if world exists
@@ -154,8 +155,7 @@ public class WorldController {
         }
 
         try {
-            String playerId = request != null ? request.getPlayerId() : null;
-            World resetWorld = worldService.resetWorldBoard(slug, playerId);
+            World resetWorld = worldService.resetWorldBoard(slug, authenticatedUser.getId());
             return ResponseEntity.ok(resetWorld);
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
@@ -209,11 +209,4 @@ class CreateWorldRequest {
 
     public Boolean getIsPublic() { return isPublic; }
     public void setIsPublic(Boolean isPublic) { this.isPublic = isPublic; }
-}
-
-class ResetRequest {
-    private String playerId;
-
-    public String getPlayerId() { return playerId; }
-    public void setPlayerId(String playerId) { this.playerId = playerId; }
 }
