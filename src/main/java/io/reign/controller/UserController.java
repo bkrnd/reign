@@ -1,6 +1,7 @@
 package io.reign.controller;
 
 
+import io.reign.dto.ErrorResponse;
 import io.reign.model.User;
 import io.reign.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,17 +18,23 @@ public class UserController {
     private UserRepository userRepository;
 
     @PostMapping
-    public ResponseEntity<User> createUser(@RequestBody CreateUserRequest request) {
+    public ResponseEntity<?> createUser(@RequestBody CreateUserRequest request) {
         // Check if username or email already exists
         if (userRepository.existsByUsername(request.getUsername())) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(new ErrorResponse("Username '" + request.getUsername() + "' already exists"));
         }
 
-        User user = new User();
-        user.setUsername(request.getUsername());
+        try {
+            User user = new User();
+            user.setUsername(request.getUsername());
 
-        User saved = userRepository.save(user);
-        return ResponseEntity.ok(saved);
+            User saved = userRepository.save(user);
+            return ResponseEntity.ok(saved);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(new ErrorResponse("An error occurred while creating the user"));
+        }
     }
 
     @GetMapping

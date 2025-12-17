@@ -1,5 +1,6 @@
 package io.reign.controller;
 
+import io.reign.dto.ErrorResponse;
 import io.reign.enums.BoardType;
 import io.reign.model.Square;
 import io.reign.model.User;
@@ -25,37 +26,45 @@ public class WorldController {
     private WorldService worldService;
 
     @PostMapping
-    public ResponseEntity<World> createWorld(
+    public ResponseEntity<?> createWorld(
             @RequestBody CreateWorldRequest request,
             @AuthenticationPrincipal User authenticatedUser
     ) {
         // Check if user is authenticated
         if (authenticatedUser == null) {
-            return ResponseEntity.status(401).build();
+            return ResponseEntity.status(401).body(new ErrorResponse("User not authenticated"));
         }
 
         // Check if slug already exists
         if (worldRepository.existsBySlug(request.getSlug())) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(new ErrorResponse("World with slug '" + request.getSlug() + "' already exists"));
         }
 
-        // Use authenticated user as owner (ignore ownerId from request)
-        World world = worldService.createWorld(
-                request.getSlug(),
-                request.getName(),
-                authenticatedUser.getId(),
-                request.getBoardType(),
-                request.getBoardSize(),
-                request.getMaxPlayers(),
-                request.getMaxTeams(),
-                request.getMinTeams(),
-                request.getMaxTeamSize(),
-                request.getMinTeamSize(),
-                request.getAllowPlayerTeamCreation(),
-                request.getIsPublic()
-        );
+        try {
+            // Use authenticated user as owner (ignore ownerId from request)
+            World world = worldService.createWorld(
+                    request.getSlug(),
+                    request.getName(),
+                    authenticatedUser.getId(),
+                    request.getBoardType(),
+                    request.getBoardSize(),
+                    request.getMaxPlayers(),
+                    request.getMaxTeams(),
+                    request.getMinTeams(),
+                    request.getMaxTeamSize(),
+                    request.getMinTeamSize(),
+                    request.getAllowPlayerTeamCreation(),
+                    request.getIsPublic()
+            );
 
-        return ResponseEntity.ok(world);
+            return ResponseEntity.ok(world);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(409).body(new ErrorResponse(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(new ErrorResponse("An error occurred while creating the world"));
+        }
     }
 
     @GetMapping
@@ -83,7 +92,7 @@ public class WorldController {
     }
 
     @PutMapping("/{slug}")
-    public ResponseEntity<World> updateWorld(
+    public ResponseEntity<?> updateWorld(
             @PathVariable String slug,
             @RequestBody CreateWorldRequest request,
             @AuthenticationPrincipal User authenticatedUser
@@ -91,12 +100,12 @@ public class WorldController {
         // Check if world exists
         World world = worldService.getWorldBySlug(slug).orElse(null);
         if (world == null) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(404).body(new ErrorResponse("World not found"));
         }
 
         // Check if authenticated user is the owner
         if (authenticatedUser == null || !world.getOwner().getId().equals(authenticatedUser.getId())) {
-            return ResponseEntity.status(403).build();
+            return ResponseEntity.status(403).body(new ErrorResponse("You do not have permission to update this world"));
         }
 
         try {
@@ -116,52 +125,64 @@ public class WorldController {
                     request.getIsPublic()
             );
             return ResponseEntity.ok(updated);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(409).body(new ErrorResponse(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(new ErrorResponse("An error occurred while updating the world"));
         }
     }
 
     @DeleteMapping("/{slug}")
-    public ResponseEntity<Void> deleteWorld(
+    public ResponseEntity<?> deleteWorld(
             @PathVariable String slug,
             @AuthenticationPrincipal User authenticatedUser
     ) {
         // Check if world exists
         World world = worldService.getWorldBySlug(slug).orElse(null);
         if (world == null) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(404).body(new ErrorResponse("World not found"));
         }
 
         // Check if authenticated user is the owner
         if (authenticatedUser == null || !world.getOwner().getId().equals(authenticatedUser.getId())) {
-            return ResponseEntity.status(403).build();
+            return ResponseEntity.status(403).body(new ErrorResponse("You do not have permission to delete this world"));
         }
 
-        worldService.deleteWorld(slug);
-        return ResponseEntity.noContent().build();
+        try {
+            worldService.deleteWorld(slug);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(new ErrorResponse("An error occurred while deleting the world"));
+        }
     }
 
     @PostMapping("/{slug}/reset")
-    public ResponseEntity<World> resetBoard(
+    public ResponseEntity<?> resetBoard(
             @PathVariable String slug,
             @AuthenticationPrincipal User authenticatedUser
     ) {
         // Check if world exists
         World world = worldService.getWorldBySlug(slug).orElse(null);
         if (world == null) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(404).body(new ErrorResponse("World not found"));
         }
 
         // Check if authenticated user is the owner
         if (authenticatedUser == null || !world.getOwner().getId().equals(authenticatedUser.getId())) {
-            return ResponseEntity.status(403).build();
+            return ResponseEntity.status(403).body(new ErrorResponse("You do not have permission to reset this world"));
         }
 
         try {
             World resetWorld = worldService.resetWorldBoard(slug, authenticatedUser.getId());
             return ResponseEntity.ok(resetWorld);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(409).body(new ErrorResponse(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(new ErrorResponse("An error occurred while resetting the world"));
         }
     }
 }
