@@ -58,6 +58,36 @@ public class GameService {
         Square square = squareRepository.findByWorldAndXAndY(world, x, y)
                 .orElseThrow(() -> new IllegalArgumentException("Square not found"));
 
+        // Check if team have any squares
+        long teamSquareCount = squareRepository.countByWorldAndOwnerTeam(world, playerTeam.get());
+
+        // Team can capture the square only neighboring squares they own
+        boolean hasNeighborOwned = false;
+        // Square board
+//        int[][] directions = { {1, 0}, {-1, 0}, {0, 1}, {0, -1} };
+        // Hex board
+        int[][] directions = { {1, 0}, {-1, 0}, {0, 1}, {0, -1}, {(y % 2 == 0) ? -1 : 1, 1}, {(y % 2 == 0) ? -1 : 1, -1} };
+
+        for (int[] dir : directions) {
+            int neighborX = x + dir[0];
+            int neighborY = y + dir[1];
+            Optional<Square> neighborOpt = squareRepository.findByWorldAndXAndY(world, neighborX, neighborY);
+            if (neighborOpt.isPresent()) {
+                Square neighbor = neighborOpt.get();
+                if (neighbor.getOwner() != null) {
+                    Optional<Team> neighborOwnerTeam = teamService.getUserTeamInWorld(worldSlug, neighbor.getOwner().getId());
+                    if (neighborOwnerTeam.isPresent() && neighborOwnerTeam.get().getId().equals(playerTeam.get().getId())) {
+                        hasNeighborOwned = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!hasNeighborOwned && teamSquareCount > 0) {
+            throw new IllegalStateException("Team must own a neighboring square to capture this square");
+        }
+
         // Check if square is unowned
         if (square.getOwner() == null) {
             square.setOwner(player);
@@ -69,6 +99,11 @@ public class GameService {
         // Prevent capturing own square
         if (square.getOwner().getId().equals(playerId)) {
             throw new IllegalArgumentException("Square is already owned by the player");
+        }
+
+        // Preventing capturing if team has no squares
+        if (teamSquareCount == 0) {
+            throw new IllegalStateException("Team must own at least one square to capture an enemy square");
         }
 
         if (square.getDefenseBonus() > 0) {

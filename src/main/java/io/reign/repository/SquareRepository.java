@@ -1,7 +1,9 @@
 package io.reign.repository;
 
 import io.reign.model.Square;
+import io.reign.model.Team;
 import io.reign.model.World;
+import io.reign.model.TeamMember;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -31,4 +33,9 @@ public interface SquareRepository extends JpaRepository<Square, String> {
     @Modifying
     @Query("UPDATE Square s SET s.owner = NULL, s.defenseBonus = 0 WHERE s.owner.id = :userId")
     int resetSquaresByUser(@Param("userId") String userId);
+
+    // Count squares in a world where the square's owner is a member of the provided team.
+    // User does not have a direct `team` field, so we check TeamMember relations.
+    @Query("SELECT COUNT(s) FROM Square s, TeamMember tm WHERE tm.user = s.owner AND s.world = :world AND tm.team = :team")
+    long countByWorldAndOwnerTeam(World world, Team team);
 }
