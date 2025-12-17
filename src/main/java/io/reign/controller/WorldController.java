@@ -1,5 +1,6 @@
 package io.reign.controller;
 
+import io.reign.enums.BoardType;
 import io.reign.model.Square;
 import io.reign.model.User;
 import io.reign.model.World;
@@ -43,6 +44,7 @@ public class WorldController {
                 request.getSlug(),
                 request.getName(),
                 authenticatedUser.getId(),
+                request.getBoardType(),
                 request.getBoardSize(),
                 request.getMaxPlayers(),
                 request.getMaxTeams(),
@@ -103,6 +105,7 @@ public class WorldController {
                     slug,
                     request.getName(),
                     null,
+                    request.getBoardType(),
                     request.getBoardSize(),
                     request.getMaxPlayers(),
                     request.getMaxTeams(),
@@ -168,6 +171,7 @@ class CreateWorldRequest {
     private String slug;
     private String name;
     private String ownerId;
+    private BoardType boardType;
     private Integer boardSize;
     private Integer maxPlayers;
     private Integer maxTeams;
@@ -185,6 +189,9 @@ class CreateWorldRequest {
 
     public String getOwnerId() { return ownerId; }
     public void setOwnerId(String ownerId) { this.ownerId = ownerId; }
+
+    public BoardType getBoardType() { return boardType; }
+    public void setBoardType(BoardType boardType) { this.boardType = boardType; }
 
     public Integer getBoardSize() { return boardSize; }
     public void setBoardSize(Integer boardSize) { this.boardSize = boardSize; }

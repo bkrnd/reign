@@ -1,5 +1,6 @@
 package io.reign.service;
 
+import io.reign.enums.BoardType;
 import io.reign.model.Square;
 import io.reign.model.SquareUpdateMessage;
 import io.reign.model.User;
@@ -39,7 +40,7 @@ public class WorldService {
     private SimpMessagingTemplate messagingTemplate;
 
     @Transactional
-    public World createWorld(String slug, String name, String ownerId, Integer boardSize, Integer maxPlayers,
+    public World createWorld(String slug, String name, String ownerId, BoardType boardType ,Integer boardSize, Integer maxPlayers,
                             Integer maxTeams, Integer minTeams, Integer maxTeamSize, Integer minTeamSize,
                             Boolean allowPlayerTeamCreation, Boolean isPublic) {
         World world = new World();
@@ -50,6 +51,7 @@ public class WorldService {
                     .orElseThrow(() -> new RuntimeException("User not found"));
             world.setOwner(owner);
         }
+        world.setBoardType(boardType != null ? boardType : BoardType.HEXAGON);
         world.setBoardSize(boardSize != null ? boardSize : 20);
         world.setMaxPlayers(maxPlayers != null ? maxPlayers : 6);
         world.setMaxTeams(maxTeams != null ? maxTeams : 6);
@@ -67,7 +69,7 @@ public class WorldService {
     }
 
     @Transactional
-    public World updateWorld(String slug, String name, String ownerId, Integer boardSize, Integer maxPlayers,
+    public World updateWorld(String slug, String name, String ownerId, BoardType boardType ,Integer boardSize, Integer maxPlayers,
                             Integer maxTeams, Integer minTeams, Integer maxTeamSize, Integer minTeamSize,
                             Boolean allowPlayerTeamCreation, Boolean isPublic) {
         World world = worldRepository.findBySlug(slug)
@@ -81,6 +83,7 @@ public class WorldService {
                     .orElseThrow(() -> new RuntimeException("User not found"));
             world.setOwner(owner);
         }
+        if (boardType != null) world.setBoardType(boardType);
         if (boardSize != null) world.setBoardSize(boardSize);
         if (maxPlayers != null) world.setMaxPlayers(maxPlayers);
         if (maxTeams != null) world.setMaxTeams(maxTeams);

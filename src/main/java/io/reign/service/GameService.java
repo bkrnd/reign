@@ -1,5 +1,6 @@
 package io.reign.service;
 
+import io.reign.enums.BoardType;
 import io.reign.model.Square;
 import io.reign.model.SquareUpdateMessage;
 import io.reign.model.Team;
@@ -63,10 +64,12 @@ public class GameService {
 
         // Team can capture the square only neighboring squares they own
         boolean hasNeighborOwned = false;
-        // Square board
-//        int[][] directions = { {1, 0}, {-1, 0}, {0, 1}, {0, -1} };
-        // Hex board
-        int[][] directions = { {1, 0}, {-1, 0}, {0, 1}, {0, -1}, {(y % 2 == 0) ? -1 : 1, 1}, {(y % 2 == 0) ? -1 : 1, -1} };
+        int[][] directions;
+        if (world.getBoardType().equals(BoardType.HEXAGON)){
+            directions = new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {(y % 2 == 0) ? -1 : 1, 1}, {(y % 2 == 0) ? -1 : 1, -1}};
+        } else {
+            directions = new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        }
 
         for (int[] dir : directions) {
             int neighborX = x + dir[0];
