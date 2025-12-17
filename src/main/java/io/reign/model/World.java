@@ -1,6 +1,7 @@
 package io.reign.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import io.reign.enums.BoardType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -42,6 +43,10 @@ public class World {
 
     @Column(nullable = false)
     private boolean isPublic = true;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private BoardType boardType = BoardType.HEXAGON;
 
     @Column(nullable = false)
     private int boardSize = 25;
