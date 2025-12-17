@@ -1,6 +1,7 @@
 package io.reign.controller;
 
 import io.reign.dto.AuthResponse;
+import io.reign.dto.ErrorResponse;
 import io.reign.dto.LoginRequest;
 import io.reign.dto.RegisterRequest;
 import io.reign.model.User;
@@ -30,39 +31,59 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(
+    public ResponseEntity<?> register(
             @Valid @RequestBody RegisterRequest request,
             HttpServletResponse response
     ) {
-        AuthResponse authResponse = authService.register(request);
-        setAuthCookie(response, authResponse.getToken());
+        try {
+            AuthResponse authResponse = authService.register(request);
+            setAuthCookie(response, authResponse.getToken());
 
-        // Remove token from response body for security
-        authResponse.setToken(null);
-        return ResponseEntity.ok(authResponse);
+            // Remove token from response body for security
+            authResponse.setToken(null);
+            return ResponseEntity.ok(authResponse);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(409).body(new ErrorResponse(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(new ErrorResponse("An error occurred during registration"));
+        }
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(
+    public ResponseEntity<?> login(
             @Valid @RequestBody LoginRequest request,
             HttpServletResponse response
     ) {
-        AuthResponse authResponse = authService.login(request);
-        setAuthCookie(response, authResponse.getToken());
+        try {
+            AuthResponse authResponse = authService.login(request);
+            setAuthCookie(response, authResponse.getToken());
 
-        // Remove token from response body for security
-        authResponse.setToken(null);
-        return ResponseEntity.ok(authResponse);
+            // Remove token from response body for security
+            authResponse.setToken(null);
+            return ResponseEntity.ok(authResponse);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(401).body(new ErrorResponse(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(new ErrorResponse("An error occurred during login"));
+        }
     }
 
     @PostMapping("/guest")
-    public ResponseEntity<AuthResponse> createGuest(HttpServletResponse response) {
-        AuthResponse authResponse = authService.createGuestUser();
-        setAuthCookie(response, authResponse.getToken());
+    public ResponseEntity<?> createGuest(HttpServletResponse response) {
+        try {
+            AuthResponse authResponse = authService.createGuestUser();
+            setAuthCookie(response, authResponse.getToken());
 
-        // Remove token from response body for security
-        authResponse.setToken(null);
-        return ResponseEntity.ok(authResponse);
+            // Remove token from response body for security
+            authResponse.setToken(null);
+            return ResponseEntity.ok(authResponse);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(new ErrorResponse("An error occurred while creating guest user"));
+        }
     }
 
     @GetMapping("/me")
@@ -106,31 +127,35 @@ public class AuthController {
     }
 
     @DeleteMapping("/logout/{userId}")
-    public ResponseEntity<Void> deleteGuestUser(
+    public ResponseEntity<?> deleteGuestUser(
             @PathVariable String userId,
             @AuthenticationPrincipal User authenticatedUser,
             HttpServletResponse response
     ) {
         // Only allow users to delete their own account
         if (!authenticatedUser.getId().equals(userId)) {
-            return ResponseEntity.status(403).build();
+            return ResponseEntity.status(403).body(new ErrorResponse("You can only delete your own account"));
         }
 
         // Only allow guest users to be deleted
         if (authenticatedUser.getUserType() != io.reign.enums.UserType.GUEST) {
-            return ResponseEntity.status(403).build();
+            return ResponseEntity.status(403).body(new ErrorResponse("Only guest users can be deleted"));
         }
 
-        authService.deleteUser(userId);
+        try {
+            authService.deleteUser(userId);
 
-        // Clear the auth cookie
-        Cookie cookie = new Cookie("token", null);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(false); // Set to true in production with HTTPS
-        cookie.setPath("/");
-        cookie.setMaxAge(0); // Delete immediately
-        response.addCookie(cookie);
+            // Clear the auth cookie
+            Cookie cookie = new Cookie("token", null);
+            cookie.setHttpOnly(true);
+            cookie.setSecure(false); // Set to true in production with HTTPS
+            cookie.setPath("/");
+            cookie.setMaxAge(0); // Delete immediately
+            response.addCookie(cookie);
 
-        return ResponseEntity.noContent().build();
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(new ErrorResponse("An error occurred while deleting user"));
+        }
     }
 }

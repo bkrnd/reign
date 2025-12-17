@@ -1,5 +1,6 @@
 package io.reign.controller;
 
+import io.reign.dto.ErrorResponse;
 import io.reign.model.Square;
 import io.reign.model.User;
 import io.reign.service.GameService;
@@ -16,7 +17,7 @@ public class GameController {
     private GameService gameService;
 
     @PostMapping("/capture")
-    public ResponseEntity<Square> captureSquare(
+    public ResponseEntity<?> captureSquare(
             @PathVariable String worldSlug,
             @RequestBody CaptureRequest request,
             @AuthenticationPrincipal User authenticatedUser
@@ -25,12 +26,14 @@ public class GameController {
             Square square = gameService.captureSquare(worldSlug, request.getX(), request.getY(), authenticatedUser.getId());
             return ResponseEntity.ok(square);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
         }
     }
 
     @PostMapping("/defend")
-    public ResponseEntity<Square> defendSquare(
+    public ResponseEntity<?> defendSquare(
             @PathVariable String worldSlug,
             @RequestBody DefendRequest request,
             @AuthenticationPrincipal User authenticatedUser
@@ -39,7 +42,9 @@ public class GameController {
             Square square = gameService.defendSquare(worldSlug, request.getX(), request.getY(), authenticatedUser.getId());
             return ResponseEntity.ok(square);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
         }
     }
 }
