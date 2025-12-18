@@ -1,5 +1,6 @@
 package io.reign.repository;
 
+import io.reign.enums.BoardType;
 import io.reign.model.World;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -28,7 +29,10 @@ public interface WorldRepository extends JpaRepository<World, String> {
     @Query("SELECT DISTINCT w FROM World w LEFT JOIN FETCH w.teams t LEFT JOIN FETCH t.members WHERE w.slug = :slug")
     Optional<World> findBySlugWithTeamsAndMembers(@Param("slug") String slug);
 
-    @Query("SELECT DISTINCT w FROM World w LEFT JOIN FETCH w.teams t LEFT JOIN FETCH t.members WHERE w.isPublic = true OR w.owner.id = :userId")
+    @Query("SELECT DISTINCT w FROM World w " +
+           "LEFT JOIN FETCH w.teams t " +
+           "LEFT JOIN FETCH t.members tm " +
+           "WHERE w.isPublic = true OR w.owner.id = :userId OR tm.user.id = :userId")
     List<World> findPublicOrOwnedByUserWithTeamsAndMembers(@Param("userId") String userId);
 
     List<World> findByIsPublicTrue();

@@ -187,6 +187,50 @@ public class WorldService {
         return worldRepository.findPublicOrOwnedByUserWithTeamsAndMembers(userId);
     }
 
+    public List<World> getWorldsWithFilters(String userId, Boolean isPublic, BoardType boardType, String search, Boolean hideFull) {
+        // First, get all worlds the user has access to
+        List<World> worlds;
+        if (userId == null) {
+            worlds = worldRepository.findByIsPublicTrueWithTeamsAndMembers();
+        } else {
+            worlds = worldRepository.findPublicOrOwnedByUserWithTeamsAndMembers(userId);
+        }
+
+        // Apply filters in Java
+        return worlds.stream()
+            .filter(world -> {
+                // Filter by isPublic
+                if (isPublic != null && world.isPublic() != isPublic) {
+                    return false;
+                }
+
+                // Filter by boardType
+                if (boardType != null && world.getBoardType() != boardType) {
+                    return false;
+                }
+
+                // Filter by search (case-insensitive contains)
+                if (search != null && !search.trim().isEmpty()) {
+                    if (!world.getName().toLowerCase().contains(search.trim().toLowerCase())) {
+                        return false;
+                    }
+                }
+
+                // Filter by hideFull
+                if (hideFull != null && hideFull) {
+                    int currentPlayers = world.getTeams().stream()
+                        .mapToInt(team -> team.getMembers().size())
+                        .sum();
+                    if (currentPlayers >= world.getMaxPlayers()) {
+                        return false;
+                    }
+                }
+
+                return true;
+            })
+            .toList();
+    }
+
     public Optional<World> getWorldBySlug(String slug) {
         return worldRepository.findBySlugWithTeamsAndMembers(slug);
     }
