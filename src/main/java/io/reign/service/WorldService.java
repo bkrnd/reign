@@ -180,6 +180,13 @@ public class WorldService {
         return worldRepository.findByIsPublicTrueWithTeamsAndMembers();
     }
 
+    public List<World> getWorldsForUser(String userId) {
+        if (userId == null) {
+            return getPublicWorlds();
+        }
+        return worldRepository.findPublicOrOwnedByUserWithTeamsAndMembers(userId);
+    }
+
     public Optional<World> getWorldBySlug(String slug) {
         return worldRepository.findBySlugWithTeamsAndMembers(slug);
     }

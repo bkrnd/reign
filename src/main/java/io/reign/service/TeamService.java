@@ -57,11 +57,6 @@ public class TeamService {
         World world = worldRepository.findBySlugWithTeamsAndMembers(worldSlug)
                 .orElseThrow(() -> new IllegalArgumentException("World not found"));
 
-        // Validate world is public
-        if (!world.isPublic()) {
-            throw new IllegalStateException("Cannot join a private world");
-        }
-
         // Get user
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
@@ -144,11 +139,6 @@ public class TeamService {
         // Get world
         World world = worldRepository.findBySlugWithTeamsAndMembers(worldSlug)
                 .orElseThrow(() -> new IllegalArgumentException("World not found"));
-
-        // Validate world is public
-        if (!world.isPublic()) {
-            throw new IllegalStateException("Cannot join a private world");
-        }
 
         // Check if player team creation is allowed
         if (!world.isAllowPlayerTeamCreation()) {
