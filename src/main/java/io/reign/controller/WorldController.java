@@ -68,8 +68,11 @@ public class WorldController {
     }
 
     @GetMapping
-    public List<World> getAllWorlds() {
-        return worldService.getPublicWorlds();
+    public List<World> getAllWorlds(@AuthenticationPrincipal User authenticatedUser) {
+        if (authenticatedUser == null) {
+            return worldService.getPublicWorlds();
+        }
+        return worldService.getWorldsForUser(authenticatedUser.getId());
     }
 
     @GetMapping("/{slug}")
