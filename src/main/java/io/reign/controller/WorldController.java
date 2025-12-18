@@ -68,7 +68,20 @@ public class WorldController {
     }
 
     @GetMapping
-    public List<World> getAllWorlds(@AuthenticationPrincipal User authenticatedUser) {
+    public List<World> getAllWorlds(
+            @AuthenticationPrincipal User authenticatedUser,
+            @RequestParam(required = false) Boolean isPublic,
+            @RequestParam(required = false) BoardType boardType,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Boolean hideFull
+    ) {
+        // If any filter is provided, use the filtered query
+        if (isPublic != null || boardType != null || search != null || hideFull != null) {
+            String userId = authenticatedUser != null ? authenticatedUser.getId() : null;
+            return worldService.getWorldsWithFilters(userId, isPublic, boardType, search, hideFull);
+        }
+
+        // Otherwise use the original logic
         if (authenticatedUser == null) {
             return worldService.getPublicWorlds();
         }
