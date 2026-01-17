@@ -17,6 +17,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -39,8 +40,12 @@ public class WorldService {
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
+    @Autowired
+    private CycleSchedulerService cycleSchedulerService;
+
     @Transactional
-    public World createWorld(String slug, String name, String ownerId, BoardType boardType ,Integer boardSize, Integer maxPlayers,
+    public World createWorld(String slug, String name, String ownerId, BoardType boardType ,Integer boardSize,
+                            Integer maxActionPoints, Integer cycleDurationInSeconds, Integer actionPointsPerCycle, Integer maxPlayers,
                             Integer maxTeams, Integer minTeams, Integer maxTeamSize, Integer minTeamSize,
                             Boolean allowPlayerTeamCreation, Boolean isPublic) {
         World world = new World();
@@ -53,6 +58,9 @@ public class WorldService {
         }
         world.setBoardType(boardType != null ? boardType : BoardType.HEXAGON);
         world.setBoardSize(boardSize != null ? boardSize : 20);
+        world.setMaxActionPoints(maxActionPoints != null ? maxActionPoints : 8);
+        world.setCycleDurationInSeconds(cycleDurationInSeconds != null ? cycleDurationInSeconds : 60);
+        world.setActionPointsPerCycle(actionPointsPerCycle != null ? actionPointsPerCycle : 4);
         world.setMaxPlayers(maxPlayers != null ? maxPlayers : 6);
         world.setMaxTeams(maxTeams != null ? maxTeams : 6);
         world.setMinTeams(minTeams != null ? minTeams : 2);
@@ -65,11 +73,21 @@ public class WorldService {
 
         initializeBoard(saved, saved.getBoardSize());
 
+        // Start cycle scheduler after transaction commits
+        World finalSaved = saved;
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                cycleSchedulerService.startWorldCycle(finalSaved);
+            }
+        });
+
         return saved;
     }
 
     @Transactional
-    public World updateWorld(String slug, String name, String ownerId, BoardType boardType ,Integer boardSize, Integer maxPlayers,
+    public World updateWorld(String slug, String name, String ownerId, BoardType boardType ,Integer boardSize,
+                            Integer maxActionPoints, Integer cycleDurationInSeconds, Integer actionPointsPerCycle, Integer maxPlayers,
                             Integer maxTeams, Integer minTeams, Integer maxTeamSize, Integer minTeamSize,
                             Boolean allowPlayerTeamCreation, Boolean isPublic) {
         World world = worldRepository.findBySlug(slug)
@@ -85,6 +103,9 @@ public class WorldService {
         }
         if (boardType != null) world.setBoardType(boardType);
         if (boardSize != null) world.setBoardSize(boardSize);
+        if (maxActionPoints != null) world.setMaxActionPoints(maxActionPoints);
+        if (cycleDurationInSeconds != null) world.setCycleDurationInSeconds(cycleDurationInSeconds);
+        if (actionPointsPerCycle != null) world.setActionPointsPerCycle(actionPointsPerCycle);
         if (maxPlayers != null) world.setMaxPlayers(maxPlayers);
         if (maxTeams != null) world.setMaxTeams(maxTeams);
         if (minTeams != null) world.setMinTeams(minTeams);
@@ -108,25 +129,44 @@ public class WorldService {
         World world = worldRepository.findBySlug(slug)
                 .orElseThrow(() -> new RuntimeException("World not found"));
 
+        // Stop cycle scheduler
+        cycleSchedulerService.stopWorldCycle(world.getId());
+
         squareRepository.deleteByWorld(world);
         worldRepository.delete(world);
     }
 
     @Transactional
     public World resetWorldBoard(String slug, String playerId) {
-        World world = worldRepository.findBySlug(slug)
+        World world = worldRepository.findBySlugWithTeamsAndMembers(slug)
                 .orElseThrow(() -> new RuntimeException("World not found"));
 
         // Use bulk update query
         squareRepository.resetAllSquares(world);
 
-        // Broadcast ONLY AFTER transaction commits
+        // Reset cycle and action points
+        world.setCycleStartedAt(Instant.now());
+        worldRepository.save(world);
+
+        // Reset action points for all team members to max
+        for (var team : world.getTeams()) {
+            for (var member : team.getMembers()) {
+                member.setCurrentActionPoints(world.getMaxActionPoints());
+            }
+        }
+
+        // Broadcast and reschedule AFTER transaction commits
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
+                // Reschedule cycle
+                cycleSchedulerService.rescheduleWorldCycle(world);
+
                 // Fetch entire board state and teams
                 World updatedWorld = worldRepository.findBySlugWithTeamsAndMembers(slug).orElse(world);
                 List<Square> board = squareRepository.findByWorld(world);
+
+                Instant nextCycleAt = cycleSchedulerService.getNextCycleTime(updatedWorld);
 
                 SquareUpdateMessage message = new SquareUpdateMessage(
                     "WORLD_RESET",
@@ -135,6 +175,7 @@ public class WorldService {
                     playerId,
                     System.currentTimeMillis()
                 );
+                message.setNextCycleAt(nextCycleAt.toEpochMilli());
                 messagingTemplate.convertAndSend("/topic/worlds/" + slug, message);
             }
         });

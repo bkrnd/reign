@@ -9,6 +9,7 @@ public class SquareUpdateMessage {
     private Set<Team> teams;
     private String playerId;
     private long timestamp;
+    private Long nextCycleAt;
 
     public SquareUpdateMessage() {
     }
@@ -59,5 +60,13 @@ public class SquareUpdateMessage {
 
     public void setTeams(Set<Team> teams) {
         this.teams = teams;
+    }
+
+    public Long getNextCycleAt() {
+        return nextCycleAt;
+    }
+
+    public void setNextCycleAt(Long nextCycleAt) {
+        this.nextCycleAt = nextCycleAt;
     }
 }

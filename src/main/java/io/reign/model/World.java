@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -67,13 +68,28 @@ public class World {
     private int minTeamSize = 1;
 
     @Column(nullable = false)
+    private int maxActionPoints = 8;
+
+    @Column(nullable = false)
+    private int cycleDurationInSeconds = 3600;
+
+    @Column(nullable = false)
+    private int actionPointsPerCycle = 4;
+
+    @Column(nullable = false)
     private boolean allowPlayerTeamCreation = true;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(nullable = false)
+    private Instant cycleStartedAt;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
+        if (cycleStartedAt == null) {
+            cycleStartedAt = Instant.now();
+        }
     }
 }

@@ -7,6 +7,7 @@ import io.reign.model.User;
 import io.reign.model.World;
 import io.reign.repository.WorldRepository;
 import io.reign.service.WorldService;
+import jakarta.persistence.Column;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -48,6 +49,9 @@ public class WorldController {
                     authenticatedUser.getId(),
                     request.getBoardType(),
                     request.getBoardSize(),
+                    request.getMaxActionPoints(),
+                    request.getCycleDurationInSeconds(),
+                    request.getActionPointsPerCycle(),
                     request.getMaxPlayers(),
                     request.getMaxTeams(),
                     request.getMinTeams(),
@@ -132,6 +136,9 @@ public class WorldController {
                     null,
                     request.getBoardType(),
                     request.getBoardSize(),
+                    request.getMaxActionPoints(),
+                    request.getCycleDurationInSeconds(),
+                    request.getActionPointsPerCycle(),
                     request.getMaxPlayers(),
                     request.getMaxTeams(),
                     request.getMinTeams(),
@@ -210,6 +217,9 @@ class CreateWorldRequest {
     private String ownerId;
     private BoardType boardType;
     private Integer boardSize;
+    private Integer maxActionPoints;
+    private Integer cycleDurationInSeconds;
+    private Integer actionPointsPerCycle;
     private Integer maxPlayers;
     private Integer maxTeams;
     private Integer minTeams;
@@ -232,6 +242,15 @@ class CreateWorldRequest {
 
     public Integer getBoardSize() { return boardSize; }
     public void setBoardSize(Integer boardSize) { this.boardSize = boardSize; }
+
+    public Integer getMaxActionPoints() { return maxActionPoints; }
+    public void setMaxActionPoints(Integer maxActionPoints) { this.maxActionPoints = maxActionPoints; }
+
+    public Integer getCycleDurationInSeconds() { return cycleDurationInSeconds; }
+    public void setCycleDurationInSeconds(Integer cycleDurationInSeconds) { this.cycleDurationInSeconds = cycleDurationInSeconds; }
+
+    public Integer getActionPointsPerCycle() { return actionPointsPerCycle; }
+    public void setActionPointsPerCycle(Integer actionPointsPerCycle) { this.actionPointsPerCycle = actionPointsPerCycle; }
 
     public Integer getMaxPlayers() { return maxPlayers; }
     public void setMaxPlayers(Integer maxPlayers) { this.maxPlayers = maxPlayers; }

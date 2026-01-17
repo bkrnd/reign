@@ -36,6 +36,9 @@ public class TeamMember {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(nullable = false)
+    private int currentActionPoints = 0;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

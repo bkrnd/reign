@@ -4,9 +4,11 @@ import io.reign.enums.BoardType;
 import io.reign.model.Square;
 import io.reign.model.SquareUpdateMessage;
 import io.reign.model.Team;
+import io.reign.model.TeamMember;
 import io.reign.model.User;
 import io.reign.model.World;
 import io.reign.repository.SquareRepository;
+import io.reign.repository.TeamMemberRepository;
 import io.reign.repository.UserRepository;
 import io.reign.repository.WorldRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +40,12 @@ public class GameService {
     @Autowired
     private TeamService teamService;
 
+    @Autowired
+    private TeamMemberRepository teamMemberRepository;
+
+    @Autowired
+    private CycleSchedulerService cycleSchedulerService;
+
     @PreAuthorize("hasPermission(#worldSlug, 'WORLD_MEMBER')")
     @Transactional
     public Square captureSquare(String worldSlug, int x, int y, String playerId) {
@@ -49,6 +57,14 @@ public class GameService {
         Optional<Team> playerTeam = teamService.getUserTeamInWorld(worldSlug, playerId);
         if (playerTeam.isEmpty()) {
             throw new IllegalStateException("Player must be in a team to perform actions");
+        }
+
+        // Get team member and check action points
+        TeamMember teamMember = teamMemberRepository.findByUserIdAndWorldId(playerId, world.getId())
+                .orElseThrow(() -> new IllegalStateException("Team member not found"));
+
+        if (teamMember.getCurrentActionPoints() <= 0) {
+            throw new IllegalStateException("Not enough action points");
         }
 
         // Fetch player
@@ -95,6 +111,11 @@ public class GameService {
         if (square.getOwner() == null) {
             square.setOwner(player);
             Square updated = squareRepository.save(square);
+
+            // Deduct action point
+            teamMember.setCurrentActionPoints(teamMember.getCurrentActionPoints() - 1);
+            teamMemberRepository.save(teamMember);
+
             broadcastAfterCommit(worldSlug, "SQUARE_CAPTURED", updated, playerId);
             return updated;
         }
@@ -118,6 +139,11 @@ public class GameService {
         }
 
         Square updated = squareRepository.save(square);
+
+        // Deduct action point
+        teamMember.setCurrentActionPoints(teamMember.getCurrentActionPoints() - 1);
+        teamMemberRepository.save(teamMember);
+
         broadcastAfterCommit(worldSlug, "SQUARE_CAPTURED", updated, playerId);
         return updated;
     }
@@ -135,6 +161,14 @@ public class GameService {
             throw new IllegalStateException("Player must be in a team to perform actions");
         }
 
+        // Get team member and check action points
+        TeamMember teamMember = teamMemberRepository.findByUserIdAndWorldId(playerId, world.getId())
+                .orElseThrow(() -> new IllegalStateException("Team member not found"));
+
+        if (teamMember.getCurrentActionPoints() <= 0) {
+            throw new IllegalStateException("Not enough action points");
+        }
+
         // Find the square
         Square square = squareRepository.findByWorldAndXAndY(world, x, y)
                 .orElseThrow(() -> new IllegalArgumentException("Square not found"));
@@ -147,6 +181,11 @@ public class GameService {
         // Defend own square
         square.setDefenseBonus(1);
         Square updated = squareRepository.save(square);
+
+        // Deduct action point
+        teamMember.setCurrentActionPoints(teamMember.getCurrentActionPoints() - 1);
+        teamMemberRepository.save(teamMember);
+
         broadcastAfterCommit(worldSlug, "SQUARE_DEFENDED", updated, playerId);
         return updated;
     }
@@ -160,6 +199,12 @@ public class GameService {
                         .orElseThrow(() -> new IllegalArgumentException("World not found"));
                 List<Square> board = squareRepository.findByWorld(world);
 
+                // Initialize lazy collections
+                world.getTeams().forEach(team -> {
+                    team.getMembers().size();
+                    team.getMembers().forEach(member -> member.getUser().getUsername());
+                });
+
                 SquareUpdateMessage message = new SquareUpdateMessage(
                     messageType,
                     board,
@@ -167,6 +212,7 @@ public class GameService {
                     playerId,
                     System.currentTimeMillis()
                 );
+                message.setNextCycleAt(cycleSchedulerService.getNextCycleTime(world).toEpochMilli());
                 messagingTemplate.convertAndSend("/topic/worlds/" + worldSlug, message);
             }
         });

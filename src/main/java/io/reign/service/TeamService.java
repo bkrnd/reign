@@ -82,12 +82,13 @@ public class TeamService {
             throw new IllegalStateException("Team is full");
         }
 
-        // Create team membership
+        // Create team membership with initial action points
         TeamMember teamMember = new TeamMember();
         teamMember.setUser(user);
         teamMember.setTeam(team);
         teamMember.setJoinedAt(LocalDateTime.now());
         teamMember.setCreatedAt(LocalDateTime.now());
+        teamMember.setCurrentActionPoints(world.getMaxActionPoints());
 
         teamMemberRepository.save(teamMember);
 
@@ -188,12 +189,13 @@ public class TeamService {
 
         Team savedTeam = teamRepository.save(team);
 
-        // Create team membership for creator
+        // Create team membership for creator with initial action points
         TeamMember teamMember = new TeamMember();
         teamMember.setUser(user);
         teamMember.setTeam(savedTeam);
         teamMember.setJoinedAt(LocalDateTime.now());
         teamMember.setCreatedAt(LocalDateTime.now());
+        teamMember.setCurrentActionPoints(world.getMaxActionPoints());
 
         teamMemberRepository.save(teamMember);
 
